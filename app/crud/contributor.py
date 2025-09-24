@@ -7,6 +7,7 @@ from sqlalchemy import select, func
 from app.models.pledge import Pledge
 from app.models.financial_year import FinancialYear
 from app.models.pledge import Pledge
+from sqlalchemy import update
 
 
 async def get_contributor(db: AsyncSession, contributor_id: int):
@@ -63,3 +64,29 @@ async def get_contributors_with_current_year_pledge(db: AsyncSession, tola_id: i
         .group_by(Contributor.id)
     )
     return result.all()
+
+
+async def update_contributor_with_pledge(db: AsyncSession, contributor_id: int, data: dict, financial_year_id: int):
+    # 1. Update contributor
+    await db.execute(
+        update(Contributor)
+        .where(Contributor.id == contributor_id)
+        .values(
+            name=data.get("name"),
+            father_or_spouse_name=data.get("father_or_spouse_name"),
+            contact=data.get("contact"),
+        )
+    )
+
+    # 2. If pledge_amount provided → update pledge
+    if data.get("pledge_amount") is not None:
+        await db.execute(
+            update(Pledge)
+            .where(
+                Pledge.contributor_id == contributor_id,
+                Pledge.financial_year_id == financial_year_id
+            )
+            .values(amount=data["pledge_amount"])
+        )
+
+    await db.commit()

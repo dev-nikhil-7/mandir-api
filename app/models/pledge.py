@@ -12,7 +12,11 @@ class Pledge(Base):
     amount = Column(Numeric(12, 2))
     notes = Column(String)
     created_at = Column(DateTime(timezone=False), default=func.now())
-
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=func.now(),
+        onupdate=func.now()
+    )
     # Relationships
     contributor = relationship("Contributor", back_populates="pledges")
     financial_year = relationship("FinancialYear", back_populates="pledges")

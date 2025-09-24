@@ -14,6 +14,7 @@ class Contributor(Base):
     created_at = Column(DateTime(timezone=True), default=func.now())
     updated_at = Column(DateTime(timezone=True),
                         default=func.now(), onupdate=func.now())
+    father_or_spouse_name = Column(String(50))
     # relationship
     tola = relationship("Tolas", back_populates="contributors")
     pledges = relationship("Pledge", back_populates="contributor")

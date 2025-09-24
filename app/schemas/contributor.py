@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
@@ -30,6 +31,7 @@ class TolaOut(BaseModel):
 class VillageOutX(BaseModel):
     id: int
     name: int
+    is_active: bool
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -37,6 +39,7 @@ class VillageOut(BaseModel):
     id: int
     amount: float
     financial_year: VillageOutX
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -45,6 +48,7 @@ class Contributor(ContributorBase):
     created_at: datetime
     updated_at: datetime
     tola: TolaOut
+    father_or_spouse_name: Optional[str]
     pledges: list[VillageOut]
 
     # Configuration for ORM mode
@@ -60,3 +64,10 @@ class ContributorWithPledge(ContributorBase):
 
     class Config:
         orm_mode = True
+
+
+class ContributorUpdate(BaseModel):
+    name: Optional[str] = None
+    father_or_spouse_name: Optional[str] = None
+    contact: Optional[str] = None
+    pledge_amount: Optional[float] = None  # ✅ new field

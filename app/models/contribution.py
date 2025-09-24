@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Numeric, DateTime, ForeignKey, func
+from sqlalchemy import Column, Integer, Numeric, DateTime, ForeignKey, func, String
 from app.db.base_class import Base
 from sqlalchemy.orm import relationship
 
@@ -20,6 +20,7 @@ class Contribution(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True),
                         default=func.now(), onupdate=func.now())
+    receipt_id = Column(String(100))
 
     # Relationships
     tola = relationship("Tolas")

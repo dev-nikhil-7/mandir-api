@@ -1,7 +1,8 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession  # Use AsyncSession
-
+from app.schemas.contributor import ContributorUpdate
+from app.crud.contributor import update_contributor_with_pledge
 # Import your dependencies
 from app.crud import contributor as crud_contributor
 from app.schemas import contributor as schemas_contributor
@@ -40,3 +41,18 @@ async def read_contributor(contributor_id: int, db: AsyncSession = Depends(get_d
             detail="Contributor not found"
         )
     return db_contributor
+
+
+@router.put("/{contributor_id}")
+async def update_contributor(
+    contributor_id: int,
+    contributor_in: ContributorUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    await update_contributor_with_pledge(
+        db,
+        contributor_id,
+        contributor_in.dict(exclude_unset=True),
+        financial_year_id=5,  # 👈 You may want to make this dynamic
+    )
+    return {"message": "Contributor and pledge updated successfully"}
