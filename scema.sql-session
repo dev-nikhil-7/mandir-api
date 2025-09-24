@@ -1,0 +1,155 @@
+-- Function
+CREATE FUNCTION public.set_updated_at() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+   NEW.updated_at = now();
+   RETURN NEW;
+END;
+$$;
+
+-- Tables
+CREATE TABLE public.chanda_events (
+    id integer NOT NULL,
+    name character varying(100) NOT NULL,
+    description text,
+    start_date date,
+    end_date date,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    financial_year_id integer NOT NULL
+);
+
+CREATE SEQUENCE public.chanda_events_id_seq
+    AS integer START WITH 1 INCREMENT BY 1 CACHE 1;
+ALTER SEQUENCE public.chanda_events_id_seq OWNED BY public.chanda_events.id;
+
+CREATE TABLE public.contributions (
+    id integer NOT NULL,
+    contributor_id integer,
+    event_id integer,
+    payment_mode_id integer,
+    amount numeric(12,2) NOT NULL,
+    payment_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    collected_by character varying(100),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    financial_year_id integer,
+    tola_id integer NOT NULL,
+    receipt_id character varying
+);
+
+CREATE SEQUENCE public.contributions_id_seq
+    AS integer START WITH 1 INCREMENT BY 1 CACHE 1;
+ALTER SEQUENCE public.contributions_id_seq OWNED BY public.contributions.id;
+
+CREATE TABLE public.pledges (
+    id integer NOT NULL,
+    contributor_id integer,
+    financial_year_id integer,
+    amount numeric(12,2) NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    notes character varying,
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+CREATE SEQUENCE public.contributor_targets_id_seq
+    AS integer START WITH 1 INCREMENT BY 1 CACHE 1;
+ALTER SEQUENCE public.contributor_targets_id_seq OWNED BY public.pledges.id;
+
+CREATE TABLE public.contributors (
+    id integer NOT NULL,
+    tola_id integer,
+    name character varying(100),
+    contact character varying(15),
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    father_or_spouse_name character varying
+);
+
+CREATE SEQUENCE public.contributors_id_seq
+    AS integer START WITH 1 INCREMENT BY 1 CACHE 1;
+ALTER SEQUENCE public.contributors_id_seq OWNED BY public.contributors.id;
+
+CREATE TABLE public.financial_years (
+    id integer NOT NULL,
+    name integer NOT NULL,
+    notes text,
+    is_active boolean DEFAULT true,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    is_current boolean DEFAULT false NOT NULL
+);
+
+CREATE TABLE public.payment_modes (
+    id integer NOT NULL,
+    name character varying(50) NOT NULL,
+    is_active boolean DEFAULT true,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE SEQUENCE public.payment_modes_id_seq
+    AS integer START WITH 1 INCREMENT BY 1 CACHE 1;
+ALTER SEQUENCE public.payment_modes_id_seq OWNED BY public.payment_modes.id;
+
+CREATE TABLE public.tolas (
+    id integer NOT NULL,
+    village_id integer,
+    tola_name character varying(100) NOT NULL,
+    tola_code character varying(10) NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE SEQUENCE public.tolas_id_seq
+    AS integer START WITH 1 INCREMENT BY 1 CACHE 1;
+ALTER SEQUENCE public.tolas_id_seq OWNED BY public.tolas.id;
+
+CREATE TABLE public.users (
+    id integer NOT NULL,
+    username character varying(50) NOT NULL,
+    password_hash text NOT NULL,
+    role character varying(20),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    is_active boolean,
+    CONSTRAINT users_role_check CHECK (
+      (role)::text = ANY (
+        (ARRAY['Admin'::character varying, 'Collector'::character varying, 'Viewer'::character varying])::text[]
+      )
+    )
+);
+
+CREATE SEQUENCE public.users_id_seq
+    AS integer START WITH 1 INCREMENT BY 1 CACHE 1;
+ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+
+CREATE TABLE public.villages (
+    id integer NOT NULL,
+    name character varying(100) NOT NULL,
+    code character varying(10) NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE SEQUENCE public.villages_id_seq
+    AS integer START WITH 1 INCREMENT BY 1 CACHE 1;
+ALTER SEQUENCE public.villages_id_seq OWNED BY public.villages.id;
+
+CREATE SEQUENCE public.years_id_seq
+    AS integer START WITH 1 INCREMENT BY 1 CACHE 1;
+ALTER SEQUENCE public.years_id_seq OWNED BY public.financial_years.id;
+
+-- Defaults
+ALTER TABLE ONLY public.chanda_events ALTER COLUMN id SET DEFAULT nextval('public.chanda_events_id_seq'::regclass);
+ALTER TABLE ONLY public.contributions ALTER COLUMN id SET DEFAULT nextval('public.contributions_id_seq'::regclass);
+ALTER TABLE ONLY public.contributors ALTER COLUMN id SET DEFAULT nextval('public.contributors_id_seq'::regclass);
+ALTER TABLE ONLY public.financial_years ALTER COLUMN id SET DEFAULT nextval('public.years_id_seq'::regclass);
+ALTER TABLE ONLY public.payment_modes ALTER COLUMN id SET DEFAULT nextval('public.payment_modes_id_seq'::regclass);
+ALTER TABLE ONLY public.pledges ALTER COLUMN id SET DEFAULT nextval('public.contributor_targets_id_seq'::regclass);
+ALTER TABLE ONLY public.tolas ALTER COLUMN id SET DEFAULT nextval('public.tolas_id_seq'::regclass);
+ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+ALTER TABLE ONLY public.villages ALTER COLUMN id SET DEFAULT nextval('public.villages_id_seq'::regclass);
+
+-- Constraints, FKs, Triggers remain unchanged (no OWNER lines)
