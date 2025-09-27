@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/",
+    "",
     status_code=status.HTTP_200_OK
 )
 async def get_dashboard(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:

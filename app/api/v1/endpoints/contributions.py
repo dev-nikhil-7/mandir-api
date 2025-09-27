@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/",
+    "",
     response_model=List[ContributionResponse],
     status_code=status.HTTP_200_OK
 )
@@ -32,7 +32,7 @@ async def read_contributions(db: AsyncSession = Depends(get_db)):
 
 
 @router.post(
-    "/",
+    "",
     response_model=ContributionCreateResponse,
     status_code=status.HTTP_201_CREATED
 )

@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/",
+    "",
     response_model=List[ChandaEventResponse],
     status_code=status.HTTP_200_OK
 )
