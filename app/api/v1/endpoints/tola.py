@@ -41,7 +41,7 @@ async def read_contributors_by_tola(tola_id: int, db: AsyncSession = Depends(get
     ]
 
 
-@router.get("/", response_model=list[TolaOut])
+@router.get("", response_model=list[TolaOut])
 async def get_all_tolas(db: AsyncSession = Depends(get_db)):
     tola = await get_all_tola(db)
     return tola
