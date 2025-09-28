@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, desc, func
 from app.models.contributor import Contributor
 from sqlalchemy.orm import joinedload, selectinload
 from app.models.tolas import Tolas
-from sqlalchemy import select, func
+
 from app.models.pledge import Pledge
 from app.models.financial_year import FinancialYear
 from app.models.pledge import Pledge
@@ -31,8 +31,15 @@ async def get_contributors(db: AsyncSession, skip: int = 0, limit: int = 100):
     """
     # Use await db.execute() with a select statement
     result = await db.execute(
-        select(Contributor).options(selectinload(
-            Contributor.tola), selectinload(Contributor.pledges).selectinload(Pledge.financial_year)).offset(skip).limit(limit)
+        select(Contributor)
+        .options(
+            selectinload(Contributor.tola),
+            selectinload(Contributor.pledges).selectinload(
+                Pledge.financial_year)
+        )
+        .order_by(desc(Contributor.id))  # ✅ latest first
+        .offset(skip)
+        .limit(limit)
     )
 
     # Use .scalars().all() to get a list of model instances

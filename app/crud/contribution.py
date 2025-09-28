@@ -10,6 +10,7 @@ from app.models.tolas import Tolas
 from app.models.contributor import Contributor
 from app.models.payment_mode import PaymentMode
 from app.models.pledge import Pledge
+from sqlalchemy import select, desc
 
 
 async def get_contributions(db: AsyncSession):
@@ -25,6 +26,7 @@ async def get_contributions(db: AsyncSession):
         .join(Tolas, Contribution.tola_id == Tolas.id)
         .join(Contributor, Contribution.contributor_id == Contributor.id)
         .join(PaymentMode, Contribution.payment_mode_id == PaymentMode.id)
+        .order_by(desc(Contribution.id))   # ✅ latest ID first
     )
     return result.all()
 

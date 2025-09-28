@@ -17,6 +17,7 @@ async def signup(user: UserCreate, db: AsyncSession = Depends(get_db)):
 @router.post("/login", response_model=Token)
 async def login(user: UserCreate, db: AsyncSession = Depends(get_db)):
     db_user = await authenticate_user(db, user.username, user.password)
+    print(db_user)
     if not db_user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
