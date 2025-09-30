@@ -19,6 +19,7 @@ async def get_contributions(db: AsyncSession):
             Contribution.id,
             Contribution.amount,
             Contribution.payment_date,
+            Contribution.receipt_id,
             Tolas.tola_name.label("tola_name"),
             Contributor.name.label("contributor_name"),
             PaymentMode.name.label("payment_mode"),

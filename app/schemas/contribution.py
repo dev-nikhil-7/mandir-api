@@ -46,6 +46,7 @@ class ContributionResponse(BaseModel):
     tola_name: str
     contributor_name: str
     payment_mode: str
+    receipt_id: str
 
     class Config:
         from_attributes = True  # ✅ Pydantic v2 replacement for orm_mode

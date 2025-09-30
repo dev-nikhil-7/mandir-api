@@ -26,6 +26,7 @@ async def read_contributions(db: AsyncSession = Depends(get_db)):
             "tola_name": row.tola_name,
             "contributor_name": row.contributor_name,
             "payment_mode": row.payment_mode,
+            "receipt_id": row.receipt_id
         }
         for row in contributions
     ]
