@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.schemas.contribution import ContributionCreate, ContributionResponse, ContributionCreateResponse
 from app.crud.contribution import create_contribution
-from app.crud.contribution import get_contributions
+from app.crud.contribution import get_contributions, get_contributor_payments
 from typing import List
 router = APIRouter()
 
@@ -46,3 +46,10 @@ async def create_new_contribution(
     """
     contribution = await create_contribution(db, contribution_in)
     return contribution
+
+
+@router.get("/tola/{tola_id}/payments")
+async def list_payments(
+    tola_id: int, db: AsyncSession = Depends(get_db)
+):
+    return await get_contributor_payments(db, tola_id, financial_year_id=5)

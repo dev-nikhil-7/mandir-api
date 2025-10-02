@@ -57,6 +57,7 @@ async def get_dashboard(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
         )
         .join(Contributor, Contributor.tola_id == Tolas.id)
         .join(Pledge, Pledge.contributor_id == Contributor.id)
+        # ✅ filter by current year
         .where(Pledge.financial_year_id == current_year.id)
         .group_by(Tolas.id)
     )
@@ -78,7 +79,23 @@ async def get_dashboard(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     # 7. Percentage collected vs pledged
     collected_percent = (float(total_collected) /
                          float(total_pledge) * 100) if total_pledge > 0 else 0
-
+    # 4b. Tola-wise collection (total contributions for current year)
+    tol_wise_collection_query = (
+        select(
+            Tolas.tola_name,
+            func.coalesce(func.sum(Contribution.amount),
+                          0).label("total_collected")
+        )
+        .join(Contributor, Contributor.tola_id == Tolas.id)
+        .join(
+            Contribution,
+            (Contribution.contributor_id == Contributor.id)
+            & (Contribution.financial_year_id == current_year.id),
+            isouter=True  # ✅ outer join to include zero contributions
+        )
+        .group_by(Tolas.id)
+    )
+    tol_wise_collection_results = (await db.execute(tol_wise_collection_query)).all()
     return {
         "contributor_count": contributor_count,
         "total_pledge": float(total_pledge),
@@ -90,4 +107,43 @@ async def get_dashboard(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
                 "total_amount": float(row.total_amount)}
             for row in tol_wise_results
         ],
+        "tol_wise_collection": [
+            {"tola_name": row.tola_name,
+                "total_collected": float(row.total_collected)}
+            for row in tol_wise_collection_results
+        ],
     }
+
+
+async def get_tola_collections(db: AsyncSession, financial_year_id: int = 5):
+    result = await db.execute(
+        select(
+            Tolas.id,
+            Tolas.tola_name,
+            func.coalesce(func.sum(Pledge.amount),
+                          0).label("total_pledged"),
+            func.coalesce(func.sum(Contribution.amount),
+                          0).label("total_paid"),
+        )
+        .join(Contributor, Contributor.tola_id == Tolas.id)
+        .outerjoin(
+            Pledge,
+            (Pledge.contributor_id == Contributor.id)
+            & (Pledge.financial_year_id == financial_year_id)   # ✅ filter pledges
+        )
+        .outerjoin(
+            Contribution,
+            (Contribution.contributor_id == Contributor.id)
+            # ✅ filter contributions
+            & (Contribution.financial_year_id == financial_year_id)
+        )
+        .group_by(Tolas.id, Tolas.tola_name)
+        .order_by(Tolas.tola_name)
+    )
+    return result.mappings().all()
+
+
+@router.get("/tola-wise/collection")
+async def tola_wise_collection(db: AsyncSession = Depends(get_db)):
+    data = await get_tola_collections(db)
+    return {"tolas": data}

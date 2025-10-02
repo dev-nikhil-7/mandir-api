@@ -2,7 +2,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.contribution import Contribution
 from app.schemas.contribution import ContributionCreate
-
+from sqlalchemy.orm import aliased
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models.contribution import Contribution
@@ -10,7 +10,7 @@ from app.models.tolas import Tolas
 from app.models.contributor import Contributor
 from app.models.payment_mode import PaymentMode
 from app.models.pledge import Pledge
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 
 
 async def get_contributions(db: AsyncSession):
@@ -85,3 +85,80 @@ async def create_contribution(db: AsyncSession, contribution_in):
     await db.refresh(contribution)
 
     return contribution
+
+
+async def get_contributor_payments(
+    db: AsyncSession, tola_id: int, financial_year_id: int = 5
+):
+    pledge_alias = aliased(Pledge)
+    contribution_alias = aliased(Contribution)
+
+    query = (
+        select(
+            Contributor.id.label("contributor_id"),
+            Contributor.name.label("contributor_name"),
+            func.coalesce(func.sum(pledge_alias.amount),
+                          0).label("pledged_amount"),
+            func.coalesce(func.sum(contribution_alias.amount),
+                          0).label("paid_amount"),
+        )
+        .join(
+            pledge_alias,
+            (pledge_alias.contributor_id == Contributor.id)
+            & (pledge_alias.financial_year_id == financial_year_id),
+            isouter=True,
+        )
+        .join(
+            contribution_alias,
+            (contribution_alias.contributor_id == Contributor.id)
+            & (contribution_alias.financial_year_id == financial_year_id),
+            isouter=True,
+        )
+        .where(Contributor.tola_id == tola_id)
+        .group_by(Contributor.id, Contributor.name)
+    )
+
+    result = await db.execute(query)
+    rows = result.mappings().all()
+
+    contributors = []
+    total_pledged = 0
+    total_paid = 0
+
+    for row in rows:
+        pledged = float(row["pledged_amount"] or 0)
+        paid = float(row["paid_amount"] or 0)
+
+        # % difference relative to pledge
+        if pledged > 0:
+            percent = round(((paid - pledged) / pledged) * 100, 2)
+        else:
+            percent = 0
+
+        contributors.append(
+            {
+                "contributor_id": row["contributor_id"],
+                "contributor_name": row["contributor_name"],
+                "pledged_amount": pledged,
+                "paid_amount": paid,
+                "percent_diff": percent,  # +ve = overpaid, -ve = underpaid
+            }
+        )
+
+        total_pledged += pledged
+        total_paid += paid
+
+    # Overall totals
+    if total_pledged > 0:
+        total_percent = round(
+            ((total_paid - total_pledged) / total_pledged) * 100, 2)
+    else:
+        total_percent = 0
+
+    summary = {
+        "total_pledged": total_pledged,
+        "total_paid": total_paid,
+        "total_percent_diff": total_percent,
+    }
+
+    return {"contributors": contributors, "summary": summary}
