@@ -7,49 +7,57 @@ from app.db.session import get_db
 from app.models.contributor import Contributor
 from app.models.pledge import Pledge
 from app.models.financial_year import FinancialYear
+from app.models.expenses import Expense
 from app.models.tolas import Tolas
 from app.models.contribution import Contribution  # ✅ new import
 
 router = APIRouter()
 
 
-@router.get(
-    "",
-    status_code=status.HTTP_200_OK
-)
+@router.get("", status_code=status.HTTP_200_OK)
 async def get_dashboard(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     """
     Dashboard API:
     - Total contributor count
-    - Sum of pledge amount for current year
-    - Tola-wise pledge sum for current year
-    - Total collected from contributions (current year)
-    - Today's collected
+    - Total pledge for current financial year
+    - Total collected amount
+    - Total expenses (all time or per year)
     - % of pledge collected
     """
 
-    # 1. Contributor count
+    # 1️⃣ Contributor count
     contributor_count_query = select(func.count(Contributor.id))
     contributor_count = (await db.execute(contributor_count_query)).scalar_one()
 
-    # 2. Current financial year
+    # 2️⃣ Current financial year
     current_year_query = select(FinancialYear).where(
         FinancialYear.is_current == True)
     current_year = (await db.execute(current_year_query)).scalar_one_or_none()
-
     if not current_year:
         raise HTTPException(
-            status_code=404,
-            detail="No current financial year set."
-        )
+            status_code=404, detail="No current financial year set.")
 
-    # 3. Total pledge for current year
+    # 3️⃣ Total pledge (for current year)
     total_pledge_query = select(func.coalesce(func.sum(Pledge.amount), 0)).where(
         Pledge.financial_year_id == current_year.id
     )
     total_pledge = (await db.execute(total_pledge_query)).scalar_one()
 
-    # 4. Tola-wise pledge sum for current year
+    # 4️⃣ Total collected (for current year)
+    total_collected_query = select(func.coalesce(func.sum(Contribution.amount), 0)).where(
+        Contribution.financial_year_id == current_year.id
+    )
+    total_collected = (await db.execute(total_collected_query)).scalar_one()
+
+    # 5️⃣ Total expenses (for current year)
+    total_expense_query = select(func.coalesce(func.sum(Expense.amount), 0))
+    total_expense = (await db.execute(total_expense_query)).scalar_one()
+
+    # 6️⃣ Percentage collected vs pledged
+    collected_percent = (float(total_collected) /
+                         float(total_pledge) * 100) if total_pledge > 0 else 0
+
+    # 7️⃣ Tola-wise pledge
     tol_wise_query = (
         select(
             Tolas.tola_name,
@@ -57,29 +65,12 @@ async def get_dashboard(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
         )
         .join(Contributor, Contributor.tola_id == Tolas.id)
         .join(Pledge, Pledge.contributor_id == Contributor.id)
-        # ✅ filter by current year
         .where(Pledge.financial_year_id == current_year.id)
         .group_by(Tolas.id)
     )
     tol_wise_results = (await db.execute(tol_wise_query)).all()
 
-    # 5. Total collected for current year (join via event_id if needed, else direct)
-    total_collected_query = select(
-        func.coalesce(func.sum(Contribution.amount), 0))
-    total_collected = (await db.execute(total_collected_query)).scalar_one()
-
-    # 6. Today's collected
-    today_collected_query = select(
-        func.coalesce(func.sum(Contribution.amount), 0)
-    ).where(
-        cast(Contribution.payment_date, Date) == date.today()
-    )
-    today_collected = (await db.execute(today_collected_query)).scalar_one()
-
-    # 7. Percentage collected vs pledged
-    collected_percent = (float(total_collected) /
-                         float(total_pledge) * 100) if total_pledge > 0 else 0
-    # 4b. Tola-wise collection (total contributions for current year)
+    # 8️⃣ Tola-wise collection
     tol_wise_collection_query = (
         select(
             Tolas.tola_name,
@@ -91,16 +82,18 @@ async def get_dashboard(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
             Contribution,
             (Contribution.contributor_id == Contributor.id)
             & (Contribution.financial_year_id == current_year.id),
-            isouter=True  # ✅ outer join to include zero contributions
+            isouter=True
         )
         .group_by(Tolas.id)
     )
     tol_wise_collection_results = (await db.execute(tol_wise_collection_query)).all()
+
+    # ✅ Final Dashboard Response
     return {
         "contributor_count": contributor_count,
         "total_pledge": float(total_pledge),
         "total_collected": float(total_collected),
-        "today_collected": float(today_collected),
+        "total_expense": float(total_expense),  # 👈 added
         "collected_percent": round(collected_percent, 2),
         "tol_wise_pledge": [
             {"tola_name": row.tola_name,

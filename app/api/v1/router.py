@@ -6,6 +6,7 @@ from app.api.v1.endpoints import dashboard  # Import the new router
 from app.api.v1.endpoints import chanda_events  # Import the new router
 from app.api.v1.endpoints import contributions
 from app.api.v1.endpoints import auth
+from app.api.v1.endpoints import expenses
 api_router = APIRouter()
 
 api_router.include_router(tola.router, prefix="/tolas", tags=["tolas"])
@@ -26,4 +27,9 @@ api_router.include_router(
     auth.router,
     prefix="/users",
     tags=["Auth"]
+)
+api_router.include_router(
+    expenses.router,
+    prefix="/expenses",
+    tags=["Expenses"]
 )
